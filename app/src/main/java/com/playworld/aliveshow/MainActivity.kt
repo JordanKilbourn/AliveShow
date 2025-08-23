@@ -44,7 +44,7 @@ fun App() {
 private fun BottomBar(nav: NavHostController) {
     val items = listOf(
         NavItem("home","Home", Icons.Outlined.Home),
-        NavItem("preview","Preview", Icons.Outlined.Preview),
+        NavItem("preview","Preview", Icons.Outlined.PlayCircleOutline),
         NavItem("settings","Settings", Icons.Outlined.Settings)
     )
     NavigationBar {
