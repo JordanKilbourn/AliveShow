@@ -16,9 +16,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer   // ✅ correct import
 import androidx.compose.ui.unit.dp
 
 // Palette
@@ -88,7 +88,7 @@ fun EnterSection(modifier: Modifier = Modifier, content: @Composable () -> Unit)
     ) { content() }
 }
 
-// ✅ Press-scale button helper — content is LAST so trailing lambda works.
+// Press-scale button helper — content is LAST so trailing lambda works.
 @Composable
 fun PressScaleButton(
     colors: ButtonColors,
@@ -99,7 +99,10 @@ fun PressScaleButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scaled = modifier.graphicsLayer(scaleX = if (pressed) 0.98f else 1f, scaleY = if (pressed) 0.98f else 1f)
+    val scaled = modifier.graphicsLayer(
+        scaleX = if (pressed) 0.98f else 1f,
+        scaleY = if (pressed) 0.98f else 1f
+    )
 
     if (tonal) {
         FilledTonalButton(
