@@ -49,10 +49,14 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.0")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
 
-    // Splash screen support (Android 12+)
+    // *** Add these two: they provide the XML theme parents we reference ***
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+
+    // SplashScreen support
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    // Audio playback (for live amplitude)
+    // Audio playback (Visualizer pipeline)
     implementation("androidx.media3:media3-exoplayer:1.3.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
