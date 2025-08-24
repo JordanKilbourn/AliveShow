@@ -30,6 +30,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.playworld.aliveshow.audio.PlayerController
+import com.playworld.aliveshow.audio.AudioAnalyzer
 import com.playworld.aliveshow.viewer.TeslaModelView
 import com.playworld.aliveshow.ui.theme.*
 
@@ -47,22 +48,25 @@ fun App() {
     val player = remember(context) { PlayerController(context) }
     DisposableEffect(Unit) { onDispose { player.release() } }
 
+    // file picker (SAF)
     val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) player.setSource(uri)
+        if (uri != null) {
+            context.contentResolver.takePersistableUriPermission(
+                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+            player.setSource(uri)
+        }
     }
     val reqMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     AliveTheme {
         GradientBackground(Modifier.fillMaxSize()) {
             val nav = rememberNavController()
-            Scaffold(
-                containerColor = Color.Transparent,
-                bottomBar = { BottomBar(nav) }
-            ) { padding ->
+            Scaffold(containerColor = Color.Transparent, bottomBar = { BottomBar(nav) }) { padding ->
                 NavHost(navController = nav, startDestination = "home", modifier = Modifier.padding(padding)) {
                     composable("home") {
                         HomeScreen(
-                            isPlayingProvider = { player.amplitude.value > 0.02f },
+                            isPlayingProvider = { /* heuristic amp not needed here */ false },
                             onCreate = { nav.navigate("preview") },
                             onPick = { pickAudio.launch(arrayOf("audio/*")) },
                             onRecord = { reqMic.launch(Manifest.permission.RECORD_AUDIO) },
@@ -120,139 +124,66 @@ fun HomeScreen(
     )
 
     Column(
-        Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // HERO
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color(0x22FFFFFF),
             shape = RoundedCornerShape(28.dp)
         ) {
-            Column(
-                Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(240.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                    Modifier.fillMaxWidth().height(240.dp).clip(RoundedCornerShape(20.dp))
                 ) {
                     Box(
-                        Modifier
-                            .matchParentSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color(0x22000000), Color.Transparent)
-                                )
-                            )
+                        Modifier.matchParentSize().background(
+                            Brush.verticalGradient(listOf(Color(0x22000000), Color.Transparent))
+                        )
                     )
                     val ampHint = 0.08f + 0.04f * breathing
-                    TeslaModelView(
-                        amplitude = ampHint,
-                        headlight = true, drl = true, fog = false, tail = true
-                    )
+                    TeslaModelView(amplitude = ampHint, headlight = true, drl = true, fog = false, tail = true)
                 }
-
-                Text(
-                    "Create cinematic Tesla light shows",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold)
-                )
-                Text(
-                    "Import audio, pick a style, preview on a live 3D Tesla, then export to USB.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f)
-                )
-
+                Text("Create cinematic Tesla light shows",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
+                Text("Import audio, pick a style, preview on a live 3D Tesla, then export to USB.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.78f))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(
-                        onClick = onCreate,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(vertical = 14.dp)
-                    ) {
-                        Icon(Icons.Outlined.Bolt, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Create light show")
+                    Button(onClick = onCreate, modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 14.dp)) {
+                        Icon(Icons.Outlined.Bolt, null); Spacer(Modifier.width(8.dp)); Text("Create light show")
                     }
-                    OutlinedButton(
-                        onClick = onPick,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(vertical = 14.dp)
-                    ) {
-                        Icon(Icons.Outlined.Audiotrack, null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Import audio")
+                    OutlinedButton(onClick = onPick, modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(vertical = 14.dp)) {
+                        Icon(Icons.Outlined.Audiotrack, null); Spacer(Modifier.width(8.dp)); Text("Import audio")
                     }
                 }
             }
         }
 
-        // QUICK ACTIONS
         Text("Quick actions", style = MaterialTheme.typography.titleMedium)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            QuickAction(
-                icon = Icons.Outlined.Mic,
-                label = "Quick record",
-                onClick = onRecord,
-                modifier = Modifier.weight(1f)
-            )
-            QuickAction(
-                icon = Icons.Outlined.FolderOpen,
-                label = "Open library",
-                onClick = onOpenLibrary,
-                modifier = Modifier.weight(1f)
-            )
-            QuickAction(
-                icon = Icons.Outlined.HelpOutline,
-                label = "How it works",
-                onClick = { /* TODO */ },
-                modifier = Modifier.weight(1f)
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+            QuickAction(Icons.Outlined.Mic, "Quick record", onRecord, Modifier.weight(1f))
+            QuickAction(Icons.Outlined.FolderOpen, "Open library", onOpenLibrary, Modifier.weight(1f))
+            QuickAction(Icons.Outlined.HelpOutline, "How it works", {}, Modifier.weight(1f))
         }
 
-        // RECENTS (placeholder)
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = Color(0x14FFFFFF),
-            shape = RoundedCornerShape(20.dp)
-        ) {
+        Surface(modifier = Modifier.fillMaxWidth(), color = Color(0x14FFFFFF), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Recent projects", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Your saved shows will appear here.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                )
+                Text("Your saved shows will appear here.", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f))
             }
         }
     }
 }
 
-@Composable
-private fun QuickAction(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+@Composable private fun QuickAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit, modifier: Modifier
 ) {
-    ElevatedCard(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp)
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Icon(icon, null)
-            Text(label, textAlign = TextAlign.Center)
+    ElevatedCard(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(18.dp)) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(icon, null); Text(label, textAlign = TextAlign.Center)
         }
     }
 }
@@ -260,108 +191,95 @@ private fun QuickAction(
 /* ------------------------------- PREVIEW --------------------------------- */
 
 @Composable
-fun PreviewScreen(player: com.playworld.aliveshow.audio.PlayerController) {
-    val amp by player.amplitude.collectAsState(0f)
+fun PreviewScreen(player: PlayerController) {
+    val analyzer = remember { AudioAnalyzer() }
+    LaunchedEffect(player.audioSessionId) {
+        if (player.audioSessionId != 0) analyzer.attachToSession(player.audioSessionId)
+    }
+    DisposableEffect(Unit) { onDispose { analyzer.release() } }
 
+    val amp by analyzer.amplitude.collectAsState(0f)
+    val speech by analyzer.speechProb.collectAsState(0f)
+    var beatFlash by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(Unit) {
+        analyzer.beat.collect {
+            beatFlash = 1f
+            while (beatFlash > 0f) {
+                beatFlash = (beatFlash - 0.08f).coerceAtLeast(0f)
+                kotlinx.coroutines.delay(16)
+            }
+        }
+    }
+
+    val mouth = (amp * (0.6f + 0.4f * speech)).coerceIn(0f, 1f)
     var head by remember { mutableStateOf(true) }
     var drl  by remember { mutableStateOf(true) }
-    var fog  by remember { mutableStateOf(false) }
+    var fog  by remember { mutableStateOf(true) }
     var tail by remember { mutableStateOf(true) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Surface(color = Color(0x22FFFFFF), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Preview", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "Rotate the car. Play your audio; lights react in real-time.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
+                Text("Lights react to voice (mouth) and beats (pulses).",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
             }
         }
-
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp),
-            color = Color(0x14FFFFFF),
-            shape = RoundedCornerShape(24.dp)
-        ) {
-            TeslaModelView(amplitude = amp, headlight = head, drl = drl, fog = fog, tail = tail)
+        Surface(Modifier.fillMaxWidth().height(300.dp), color = Color(0x14FFFFFF), shape = RoundedCornerShape(24.dp)) {
+            TeslaModelView(amplitude = mouth, headlight = head, drl = drl, fog = fog, tail = tail)
         }
-
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             FilledTonalButton(onClick = { player.togglePlay() }) { Text("Play / Pause") }
             OutlinedButton(onClick = { player.stop() }) { Text("Stop") }
         }
-
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FilterChip(selected = head,  onClick = { head = !head },  label = { Text("Headlights") })
-            FilterChip(selected = drl,   onClick = { drl = !drl },    label = { Text("DRLs") })
-            FilterChip(selected = fog,   onClick = { fog = !fog },    label = { Text("Fogs") })
-            FilterChip(selected = tail,  onClick = { tail = !tail },  label = { Text("Taillights") })
+            FilterChip(head, { head = !head }, { Text("Headlights") })
+            FilterChip(drl,  { drl = !drl },  { Text("DRLs / Mouth") })
+            FilterChip(fog,  { fog = !fog },  { Text("Fogs / Mouth") })
+            FilterChip(tail, { tail = !tail }, { Text("Taillights") })
         }
-
         Spacer(Modifier.weight(1f))
-        Button(
-            onClick = { /* TODO export */ },
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 14.dp)
-        ) {
-            Icon(Icons.Outlined.Usb, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Export to USB / LightShow")
+        Button(onClick = { /* TODO */ }, modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 14.dp)) {
+            Icon(Icons.Outlined.Usb, null); Spacer(Modifier.width(8.dp)); Text("Export to USB / LightShow")
         }
     }
 }
 
-/* ------------------------------- SETTINGS -------------------------------- */
+/* ------------------------------- SETTINGS / LIB -------------------------- */
 
 enum class HeadlightType { Projector, Reflector }
 
-@Composable
-fun SettingsScreen() {
+@Composable fun SettingsScreen() {
     var hasFogs by remember { mutableStateOf(true) }
     var headlight by remember { mutableStateOf(HeadlightType.Projector) }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Surface(color = Color(0x22FFFFFF), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Settings", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "Tell the app what hardware you have so mappings use every light.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
+                Text("Tell the app what hardware you have so mappings use every light.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AssistChip(onClick = { headlight = HeadlightType.Projector }, label = { Text("Headlights: Projector") })
                     AssistChip(onClick = { headlight = HeadlightType.Reflector }, label = { Text("Headlights: Reflector") })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = hasFogs, onCheckedChange = { hasFogs = it })
-                    Spacer(Modifier.width(8.dp))
-                    Text("Front fog lights present")
+                    Spacer(Modifier.width(8.dp)); Text("Front fog lights present")
                 }
                 Button(onClick = { /* save */ }, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
             }
         }
     }
 }
-
-/* -------------------------------- LIBRARY -------------------------------- */
-
-@Composable
-fun LibraryScreen() {
+@Composable fun LibraryScreen() {
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Surface(color = Color(0x22FFFFFF), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Library", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "Saved shows will appear here with duration, style, and export status.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
+                Text("Saved shows will appear here with duration, style, and export status.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
             }
         }
     }
