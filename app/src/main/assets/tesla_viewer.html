@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+  <style>
+    html,body { margin:0; background:#0A0F1E; }
+    model-viewer { width:100vw; height:100vh; background: transparent; }
+  </style>
+</head>
+<body>
+  <!-- Default to local tesla.glb; if missing, we’ll redirect to an online sample -->
+  <model-viewer id="mv" src="tesla.glb"
+                camera-controls interaction-prompt="none"
+                environment-image="neutral"
+                shadow-intensity="0"
+                exposure="0.9" ar ar-modes="webxr scene-viewer quick-look">
+  </model-viewer>
+
+  <script>
+    const mv = document.getElementById('mv');
+
+    // If the local model isn’t there, fall back to a public sample so the preview still works.
+    mv.addEventListener('error', () => {
+      mv.src = "https://modelviewer.dev/shared-assets/models/Astronaut.glb";
+    });
+
+    // Called from Android: control “lights” via emissive and exposure.
+    // In a proper Tesla GLB we’ll map materials by name (head, drl, fog, tail…).
+    window.setLights = function(head, drl, fog, tail, amp) {
+      // Global brightness bump tied to amplitude for “breathing”
+      const exp = 0.9 + (Math.max(0, Math.min(1, amp)) * 0.35);
+      mv.exposure = exp;
+
+      // If materials exist, light them up. (No-op if names don’t match yet.)
+      const M = mv.model?.materials || [];
+      const findMat = (needle) =>
+        M.find(m => (m.name||"").toLowerCase().includes(needle));
+      const setEmissive = (mat, rgb) => {
+        if (!mat) return;
+        mat.emissiveFactor = rgb;    // [r,g,b] 0..1
+        mat.emissiveStrength = 3.0;
+      };
+
+      if (mv.model) {
+        if (head) setEmissive(findMat("head"), [1.0,1.0,0.95]);
+        if (drl)  setEmissive(findMat("drl"),  [0.7,0.8,1.0]);
+        if (fog)  setEmissive(findMat("fog"),  [0.95,0.95,0.85]);
+        if (tail) setEmissive(findMat("tail"), [1.0,0.25,0.2]);
+      }
+    };
+  </script>
+</body>
+</html>
