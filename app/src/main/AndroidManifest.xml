@@ -1,8 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.playworld.aliveshow">
 
-    <!-- optional now, required later when we add Visualizer -->
+    <!-- Needed for audio visualizer and for the WebView 3D preview -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:label="AliveShow"
@@ -10,6 +11,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AliveShow">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -18,5 +20,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
     </application>
 </manifest>
