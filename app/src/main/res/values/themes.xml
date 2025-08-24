@@ -1,9 +1,7 @@
 <resources>
     <style name="Theme.AliveShow" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Basic system chrome; non-API31 devices read this -->
+        <!-- Common look for all API levels -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:enforceStatusBarContrast">false</item>
-        <item name="android:enforceNavigationBarContrast">false</item>
     </style>
 </resources>
