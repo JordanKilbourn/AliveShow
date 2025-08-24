@@ -1,13 +1,20 @@
 package com.playworld.aliveshow.ui.theme
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -45,18 +52,11 @@ fun AliveTheme(content: @Composable () -> Unit) {
 
 // Subtle vertical gradient for the whole app background
 @Composable
-fun GradientBackground(
-    modifier: Modifier = Modifier,
-    content: @Composable BoxScope.() -> Unit
-) {
+fun GradientBackground(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
     Box(
         modifier = modifier.background(
             Brush.verticalGradient(
-                listOf(
-                    Color(0xFF0A0F1E),
-                    Color(0xFF0F1B38),
-                    Color(0xFF0B1222)
-                )
+                listOf(Color(0xFF0A0F1E), Color(0xFF0F1B38), Color(0xFF0B1222))
             )
         ),
         content = content
@@ -65,10 +65,7 @@ fun GradientBackground(
 
 // “Glass” card: translucent surface, soft border & shadow
 @Composable
-fun GlassCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
-) {
+fun GlassCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(containerColor = Color(0x33FFFFFF)),
@@ -77,4 +74,33 @@ fun GlassCard(
         shape = AppShapes.large,
         content = { content() }
     )
+}
+
+// Animate cards sliding in for a premium feel
+@Composable
+fun EnterSection(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 6 }),
+        modifier = modifier
+    ) { content() }
+}
+
+// Press-scale for any button
+@Composable
+fun <T : ButtonColors> PressScaleButton(
+    colors: T,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+    tonal: Boolean = false
+) {
+    val interaction = MutableInteractionSource()
+    val pressed by interaction.collectIsPressedAsState()
+    val scale = if (pressed) 0.98f else 1f
+    val mod = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+    if (tonal) {
+        FilledTonalButton(onClick = onClick, colors = colors as ButtonColors, interactionSource = interaction, modifier = mod) { content() }
+    } else {
+        ElevatedButton(onClick = onClick, colors = colors as ButtonColors, interactionSource = interaction, modifier = mod) { content() }
+    }
 }
