@@ -3,7 +3,7 @@ package com.playworld.aliveshow.viewer
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 
@@ -29,12 +29,12 @@ fun TeslaModelView(
         },
         update = { wv ->
             val js = "javascript:setLights(" +
-                    (if (headlight) 1 else 0) + "," +
-                    (if (drl) 1 else 0) + "," +
-                    (if (fog) 1 else 0) + "," +
-                    (if (tail) 1 else 0) + "," +
-                    String.format("%.3f", amplitude.coerceIn(0f, 1f)) +
-                    ")"
+                (if (headlight) 1 else 0) + "," +
+                (if (drl) 1 else 0) + "," +
+                (if (fog) 1 else 0) + "," +
+                (if (tail) 1 else 0) + "," +
+                String.format("%.3f", amplitude.coerceIn(0f, 1f)) +
+                ")"
             wv.evaluateJavascript(js, null)
         }
     )
