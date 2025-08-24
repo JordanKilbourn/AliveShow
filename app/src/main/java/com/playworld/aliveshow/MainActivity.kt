@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -30,7 +31,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.playworld.aliveshow.audio.PlayerController
 import com.playworld.aliveshow.viewer.TeslaModelView
-import com.playworld.aliveshow.ui.theme.* // uses your GradientBackground/GlassCard if present
+import com.playworld.aliveshow.ui.theme.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +43,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun App() {
-    val player = remember { PlayerController(LocalContext.current) }
+    val context = LocalContext.current
+    val player = remember(context) { PlayerController(context) }
     DisposableEffect(Unit) { onDispose { player.release() } }
 
     val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -112,7 +114,6 @@ fun HomeScreen(
     onRecord: () -> Unit,
     onOpenLibrary: () -> Unit
 ) {
-    val accent = MaterialTheme.colorScheme.primary
     val breathing by animateFloatAsState(
         targetValue = if (isPlayingProvider()) 0.0f else 1.0f,
         animationSpec = tween(durationMillis = 1600, easing = FastOutSlowInEasing), label = "breath"
@@ -124,7 +125,7 @@ fun HomeScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // HERO: 3D car + purpose text + primary CTA
+        // HERO
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Color(0x22FFFFFF),
@@ -134,14 +135,12 @@ fun HomeScreen(
                 Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // 3D model viewer hero
                 Box(
                     Modifier
                         .fillMaxWidth()
                         .height(240.dp)
                         .clip(RoundedCornerShape(20.dp))
                 ) {
-                    // Subtle gradient frame behind the viewer
                     Box(
                         Modifier
                             .matchParentSize()
@@ -151,10 +150,9 @@ fun HomeScreen(
                                 )
                             )
                     )
-                    // Amplitude “breathing” when idle (just a hint of life)
                     val ampHint = 0.08f + 0.04f * breathing
                     TeslaModelView(
-                        amplitude = ampHint, // real amplitude takes over in Preview
+                        amplitude = ampHint,
                         headlight = true, drl = true, fog = false, tail = true
                     )
                 }
@@ -193,21 +191,27 @@ fun HomeScreen(
 
         // QUICK ACTIONS
         Text("Quick actions", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             QuickAction(
                 icon = Icons.Outlined.Mic,
                 label = "Quick record",
-                onClick = onRecord
+                onClick = onRecord,
+                modifier = Modifier.weight(1f)
             )
             QuickAction(
                 icon = Icons.Outlined.FolderOpen,
                 label = "Open library",
-                onClick = onOpenLibrary
+                onClick = onOpenLibrary,
+                modifier = Modifier.weight(1f)
             )
             QuickAction(
-                icon = Icons.Outlined.QuestionMark,
+                icon = Icons.Outlined.HelpOutline,
                 label = "How it works",
-                onClick = { /* TODO: help overlay */ }
+                onClick = { /* TODO */ },
+                modifier = Modifier.weight(1f)
             )
         }
 
@@ -232,11 +236,12 @@ fun HomeScreen(
 private fun QuickAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ElevatedCard(
         onClick = onClick,
-        modifier = Modifier.weight(1f),
+        modifier = modifier,
         shape = RoundedCornerShape(18.dp)
     ) {
         Column(
@@ -263,18 +268,28 @@ fun PreviewScreen(player: com.playworld.aliveshow.audio.PlayerController) {
     var fog  by remember { mutableStateOf(false) }
     var tail by remember { mutableStateOf(true) }
 
-    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         Surface(color = Color(0x22FFFFFF), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Preview", style = MaterialTheme.typography.titleLarge)
-                Text("Rotate the car. Play your audio; lights react in real-time.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                Text(
+                    "Rotate the car. Play your audio; lights react in real-time.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
             }
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth().height(300.dp),
-            color = Color(0x14FFFFFF), shape = RoundedCornerShape(24.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp),
+            color = Color(0x14FFFFFF),
+            shape = RoundedCornerShape(24.dp)
         ) {
             TeslaModelView(amplitude = amp, headlight = head, drl = drl, fog = fog, tail = tail)
         }
@@ -285,16 +300,21 @@ fun PreviewScreen(player: com.playworld.aliveshow.audio.PlayerController) {
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            FilterChip(head,  onClick = { head = !head },  label = { Text("Headlights") })
-            FilterChip(drl,   onClick = { drl = !drl },    label = { Text("DRLs") })
-            FilterChip(fog,   onClick = { fog = !fog },    label = { Text("Fogs") })
-            FilterChip(tail,  onClick = { tail = !tail },  label = { Text("Taillights") })
+            FilterChip(selected = head,  onClick = { head = !head },  label = { Text("Headlights") })
+            FilterChip(selected = drl,   onClick = { drl = !drl },    label = { Text("DRLs") })
+            FilterChip(selected = fog,   onClick = { fog = !fog },    label = { Text("Fogs") })
+            FilterChip(selected = tail,  onClick = { tail = !tail },  label = { Text("Taillights") })
         }
 
         Spacer(Modifier.weight(1f))
-        Button(onClick = { /* TODO export */ }, modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 14.dp)) {
-            Icon(Icons.Outlined.Usb, null); Spacer(Modifier.width(8.dp)); Text("Export to USB /LightShow")
+        Button(
+            onClick = { /* TODO export */ },
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 14.dp)
+        ) {
+            Icon(Icons.Outlined.Usb, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Export to USB / LightShow")
         }
     }
 }
@@ -311,15 +331,18 @@ fun SettingsScreen() {
         Surface(color = Color(0x22FFFFFF), shape = RoundedCornerShape(24.dp)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Settings", style = MaterialTheme.typography.titleLarge)
-                Text("Tell the app what hardware you have so mappings use every light.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                Text(
+                    "Tell the app what hardware you have so mappings use every light.",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     AssistChip(onClick = { headlight = HeadlightType.Projector }, label = { Text("Headlights: Projector") })
                     AssistChip(onClick = { headlight = HeadlightType.Reflector }, label = { Text("Headlights: Reflector") })
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Switch(checked = hasFogs, onCheckedChange = { hasFogs = it })
-                    Spacer(Modifier.width(8.dp)); Text("Front fog lights present")
+                    Spacer(Modifier.width(8.dp))
+                    Text("Front fog lights present")
                 }
                 Button(onClick = { /* save */ }, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
             }
