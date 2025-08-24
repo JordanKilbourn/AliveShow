@@ -9,10 +9,12 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.graphics.Brush
@@ -86,21 +88,34 @@ fun EnterSection(modifier: Modifier = Modifier, content: @Composable () -> Unit)
     ) { content() }
 }
 
-// Press-scale for any button
+// ✅ Press-scale button helper — content is LAST so trailing lambda works.
 @Composable
-fun <T : ButtonColors> PressScaleButton(
-    colors: T,
+fun PressScaleButton(
+    colors: ButtonColors,
     onClick: () -> Unit,
-    content: @Composable () -> Unit,
-    tonal: Boolean = false
+    tonal: Boolean = false,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit
 ) {
-    val interaction = MutableInteractionSource()
+    val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val scale = if (pressed) 0.98f else 1f
-    val mod = Modifier.graphicsLayer(scaleX = scale, scaleY = scale)
+    val scaled = modifier.graphicsLayer(scaleX = if (pressed) 0.98f else 1f, scaleY = if (pressed) 0.98f else 1f)
+
     if (tonal) {
-        FilledTonalButton(onClick = onClick, colors = colors as ButtonColors, interactionSource = interaction, modifier = mod) { content() }
+        FilledTonalButton(
+            onClick = onClick,
+            colors = colors,
+            interactionSource = interaction,
+            modifier = scaled,
+            content = content
+        )
     } else {
-        ElevatedButton(onClick = onClick, colors = colors as ButtonColors, interactionSource = interaction, modifier = mod) { content() }
+        ElevatedButton(
+            onClick = onClick,
+            colors = colors,
+            interactionSource = interaction,
+            modifier = scaled,
+            content = content
+        )
     }
 }
