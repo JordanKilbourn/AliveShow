@@ -1,10 +1,15 @@
 <resources>
-    <style name="Theme.AliveShow" parent="Theme.Material3.DayNight.NoActionBar">
+    <!-- Same style name and parent; adds Android 12+ splash items -->
+    <style name="Theme.AliveShow" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <!-- Splash API (Android 12+) -->
+
+        <!-- SplashScreen API (Android 12+) -->
         <item name="android:windowSplashScreenBackground">#0A0F1E</item>
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+
+        <!-- Return to same theme after splash -->
+        <item name="postSplashScreenTheme">@style/Theme.AliveShow</item>
     </style>
 </resources>
