@@ -1,4 +1,4 @@
-package com.playworld.aliveshow
+ package com.playworld.aliveshow
 
 import android.Manifest
 import android.os.Bundle
@@ -16,18 +16,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.playworld.aliveshow.audio.PlayerController
-import com.playworld.aliveshow.ui.theme.AliveTheme
-import com.playworld.aliveshow.ui.theme.GlassCard
-import com.playworld.aliveshow.ui.theme.GradientBackground
+import com.playworld.aliveshow.ui.theme.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContent { App() }
     }
@@ -38,28 +39,16 @@ fun App() {
     val player = remember { PlayerController(LocalContext.current) }
     DisposableEffect(Unit) { onDispose { player.release() } }
 
-    // Pick audio (SAF)
-    val pickAudio = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri -> if (uri != null) player.setSource(uri) }
-
-    // Mic permission (Visualizer)
-    val reqMic = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* handled gracefully */ }
+    val pickAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) player.setSource(uri)
+    }
+    val reqMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     AliveTheme {
         GradientBackground(Modifier.fillMaxSize()) {
             val nav = rememberNavController()
-            Scaffold(
-                containerColor = Color.Transparent,
-                bottomBar = { BottomBar(nav) }
-            ) { padding ->
-                NavHost(
-                    navController = nav,
-                    startDestination = "home",
-                    modifier = Modifier.padding(padding)
-                ) {
+            Scaffold(containerColor = Color.Transparent, bottomBar = { BottomBar(nav) }) { padding ->
+                NavHost(navController = nav, startDestination = "home", modifier = Modifier.padding(padding)) {
                     composable("home") {
                         HomeScreen(
                             onPick = { pickAudio.launch(arrayOf("audio/*")) },
@@ -67,7 +56,7 @@ fun App() {
                             onGoPreview = { nav.navigate("preview") }
                         )
                     }
-                    composable("preview") { PreviewScreen(player = player) }
+                    composable("preview") { PreviewScreen(player) }
                     composable("settings") { SettingsScreen() }
                 }
             }
@@ -75,17 +64,14 @@ fun App() {
     }
 }
 
-// ----- Bottom Bar (glass look) -----
 @Composable
 private fun BottomBar(nav: NavHostController) {
     val items = listOf(
-        NavItem("home", "Home", Icons.Outlined.Home),
-        NavItem("preview", "Preview", Icons.Outlined.SmartDisplay),
-        NavItem("settings", "Settings", Icons.Outlined.Settings)
+        NavItem("home","Home", Icons.Outlined.Home),
+        NavItem("preview","Preview", Icons.Outlined.SmartDisplay),
+        NavItem("settings","Settings", Icons.Outlined.Settings)
     )
-    NavigationBar(
-        containerColor = Color(0x1FFFFFFF) // translucent
-    ) {
+    NavigationBar(containerColor = Color(0x1FFFFFFF)) {
         val backStack by nav.currentBackStackEntryAsState()
         val current = backStack?.destination
         items.forEach { item ->
@@ -101,71 +87,65 @@ private fun BottomBar(nav: NavHostController) {
 }
 data class NavItem(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
-// ----- Home -----
 enum class AudioMode { DialogueOnly, DialogueMusic, MusicOnly }
 
 @Composable
 fun HomeScreen(onPick: () -> Unit, onRecordPerm: () -> Unit, onGoPreview: () -> Unit) {
     var mode by remember { mutableStateOf(AudioMode.DialogueMusic) }
 
-    Column(
-        Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Hero header
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("AliveShow", style = MaterialTheme.typography.headlineMedium)
-                Text(
-                    "Create cinematic light shows. Smart mapping, zero fuss.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
-            }
-        }
-
-        // Main action card
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text("Start a new show", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "Pick your audio type. The app adapts options and mapping accordingly.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
-                ModeChips(mode) { mode = it }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    ElevatedButton(onClick = onPick) {
-                        Icon(Icons.Outlined.Audiotrack, contentDescription = null)
-                        Spacer(Modifier.width(8.dp)); Text("Pick audio")
-                    }
-                    FilledTonalButton(onClick = onRecordPerm) {
-                        Icon(Icons.Outlined.Mic, contentDescription = null)
-                        Spacer(Modifier.width(8.dp)); Text("Enable mic")
-                    }
-                }
-                AssistChip(onClick = { /* TODO */ }, label = { Text("Personality: Jarvis") })
-            }
-        }
-
-        // Generate card
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("One-tap generate", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "Preview Eyes, Mouth, and Gestures before export.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f)
-                )
-                Button(
-                    onClick = onGoPreview,
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = 14.dp)
-                ) {
-                    Icon(Icons.Outlined.PlayArrow, null)
-                    Spacer(Modifier.width(8.dp)); Text("Generate & Preview")
+    Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        EnterSection {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("AliveShow", style = MaterialTheme.typography.headlineMedium)
+                    Text("Create cinematic light shows. Smart mapping, zero fuss.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
                 }
             }
         }
+        EnterSection {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("Start a new show", style = MaterialTheme.typography.titleLarge)
+                    Text("Pick your audio type. The app adapts options and mapping accordingly.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                    ModeChips(mode) { mode = it }
 
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PressScaleButton(
+                            colors = ButtonDefaults.elevatedButtonColors()
+                            , onClick = onPick
+                        ) {
+                            Icon(Icons.Outlined.Audiotrack, null); Spacer(Modifier.width(8.dp)); Text("Pick audio")
+                        }
+                        PressScaleButton(
+                            colors = ButtonDefaults.filledTonalButtonColors(),
+                            onClick = onRecordPerm,
+                            tonal = true
+                        ) {
+                            Icon(Icons.Outlined.Mic, null); Spacer(Modifier.width(8.dp)); Text("Enable mic")
+                        }
+                    }
+                    AssistChip(onClick = { /* TODO */ }, label = { Text("Personality: Jarvis") })
+                }
+            }
+        }
+        EnterSection {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("One-tap generate", style = MaterialTheme.typography.titleLarge)
+                    Text("Preview Eyes, Mouth, and Gestures before export.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                    Button(
+                        onClick = onGoPreview,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(vertical = 14.dp)
+                    ) {
+                        Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Generate & Preview")
+                    }
+                }
+            }
+        }
         Spacer(Modifier.weight(1f))
         Text(
             "Tip: export to a USB “/LightShow” folder when ready.",
@@ -185,20 +165,23 @@ fun ModeChips(selected: AudioMode, onChange: (AudioMode) -> Unit) {
     }
 }
 
-// ----- Preview -----
 @Composable
 fun PreviewScreen(player: com.playworld.aliveshow.audio.PlayerController) {
     val amp by player.amplitude.collectAsState(0f)
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Preview", style = MaterialTheme.typography.titleLarge)
-                Text("Pick audio on Home. Play here; mouth reacts to loudness.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+        EnterSection {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Preview", style = MaterialTheme.typography.titleLarge)
+                    Text("Pick audio on Home. Play here; mouth reacts to loudness.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                }
             }
         }
-        GlassCard(Modifier.fillMaxWidth().height(260.dp)) {
-            Box(Modifier.padding(12.dp)) { CarFaceMock(mouthOpen = amp) }
+        EnterSection {
+            GlassCard(Modifier.fillMaxWidth().height(260.dp)) {
+                Box(Modifier.padding(12.dp)) { CarFaceMock(mouthOpen = amp) }
+            }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             FilledTonalButton(onClick = { player.togglePlay() }) { Text("Play / Pause") }
@@ -231,7 +214,6 @@ fun CarFaceMock(mouthOpen: Float = 0f) {
     }
 }
 
-// ----- Settings -----
 enum class HeadlightType { Projector, Reflector }
 
 @Composable
@@ -239,21 +221,23 @@ fun SettingsScreen() {
     var hasFogs by remember { mutableStateOf(true) }
     var headlight by remember { mutableStateOf(HeadlightType.Projector) }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        GlassCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Settings", style = MaterialTheme.typography.titleLarge)
-                Text("Tell the app what hardware you have so mappings use every light.",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AssistChip(onClick = { headlight = HeadlightType.Projector }, label = { Text("Headlights: Projector") })
-                    AssistChip(onClick = { headlight = HeadlightType.Reflector }, label = { Text("Headlights: Reflector") })
+        EnterSection {
+            GlassCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Settings", style = MaterialTheme.typography.titleLarge)
+                    Text("Tell the app what hardware you have so mappings use every light.",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        AssistChip(onClick = { headlight = HeadlightType.Projector }, label = { Text("Headlights: Projector") })
+                        AssistChip(onClick = { headlight = HeadlightType.Reflector }, label = { Text("Headlights: Reflector") })
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = hasFogs, onCheckedChange = { hasFogs = it })
+                        Spacer(Modifier.width(8.dp)); Text("Front fog lights present")
+                    }
+                    Button(onClick = { /* TODO: persist */ }, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = hasFogs, onCheckedChange = { hasFogs = it })
-                    Spacer(Modifier.width(8.dp)); Text("Front fog lights present")
-                }
-                Button(onClick = { /* TODO: persist */ }, modifier = Modifier.fillMaxWidth()) { Text("Save profile") }
             }
         }
     }
-}
+} 
